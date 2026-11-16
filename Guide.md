@@ -1,24 +1,10 @@
-
----
-## Where and how to document (read once)
-
-Documentation is easiest as a habit from day one. There are three places, each with a different job:
-
-| Place | What goes there | On GitHub? |
-|---|---|---|
-| **Evidence folder** `Documents/triageforge-evidence` | Raw screenshots, result files, failure examples | No (private) |
-| **`project_log.md`** (inside the evidence folder) | Your running diary: what you did, what broke, why you decided things, numbers | No (copy highlights into the repo) |
-| **The repository** `docs/`, `eval/`, `scripts/` | Polished versions: methodology, threat model, results, diagrams, scripts | Yes |
-
-Capture everything in the evidence folder, think in the log, then publish the best parts in the repo.
-
 ### Create the evidence system now
 
 ```powershell
-mkdir ~/Documents/triageforge-evidence/screenshots
-mkdir ~/Documents/triageforge-evidence/results
-mkdir ~/Documents/triageforge-evidence/failures
-New-Item ~/Documents/triageforge-evidence/project_log.md -ItemType File
+mkdir Documents/triageforge-evidence/screenshots
+mkdir Documents/triageforge-evidence/results
+mkdir Documents/triageforge-evidence/failures
+New-Item Documents/triageforge-evidence/project_log.md -ItemType File
 ```
 
 | Subfolder | Use it for |
