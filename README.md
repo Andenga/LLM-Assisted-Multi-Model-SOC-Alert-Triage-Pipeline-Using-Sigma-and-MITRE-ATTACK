@@ -2,9 +2,8 @@
 
 > A detection-to-triage pipeline that runs public Sigma rules against real attack-simulation log data, maps every match to MITRE ATT&CK, and uses an LLM to produce a structured, confidence-scored triage verdict with human-in-the-loop escalation for anything the model isn't sure about.
 
-[Demo video (3 min)](#) · [Live dashboard](#) · [Evaluation results](docs/EVALUATION.md) · [Design decisions](docs/DESIGN_DECISIONS.md)
+· [Evaluation results](docs/EVALUATION.md) · [Design decisions](docs/DESIGN_DECISIONS.md)
 
-![CI](https://github.com/<you>/<repo>/actions/workflows/ci.yml/badge.svg)
 
 ---
 ## Data setup
@@ -191,11 +190,7 @@ docker run -p 8501:8501 soc-llm-triage
 - Single-model evaluation by default; `[if you did the model comparison]` a second model was compared on a subset — see `docs/EVALUATION.md`.
 - Asset criticality is a small simulated inventory, not a real CMDB integration.
 
----
 
-## Repo structure
-
-See [`docs/BUILD_GUIDE.md`](docs/BUILD_GUIDE.md) for the full build walkthrough and design rationale, and [`docs/DESIGN_DECISIONS.md`](docs/DESIGN_DECISIONS.md) for a list of non-obvious choices and the alternatives considered for each.
 
 ---
 
