@@ -1,0 +1,9 @@
+.env
+.venv/
+data/raw/
+data/attack/
+data/alerts/
+.cache/
+*.evtx
+__pycache__/
+.pytest_cache/

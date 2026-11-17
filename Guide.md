@@ -79,14 +79,6 @@ If you see "running scripts is disabled", run `Set-ExecutionPolicy -Scope Curren
 
 **3.4 Secrets file.** Create `.env` containing `ANTHROPIC_API_KEY=your-key-here`. Also create `.env.example` containing only `ANTHROPIC_API_KEY=` (this one is safe to commit).
 
-**3.5 First commit:**
-
-```powershell
-git add .
-git commit -m 'Initial project structure'
-git push
-```
-
 **3.6 Make the package importable and switch on CI from day one.** Tests and a green build from the first week are worth more than a badge added at the end. Create `pyproject.toml` in the project root:
 
 ```toml
