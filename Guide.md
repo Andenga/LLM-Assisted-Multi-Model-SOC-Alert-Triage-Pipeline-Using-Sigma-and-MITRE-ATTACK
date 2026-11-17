@@ -1,126 +1,18 @@
-### Create the evidence system now
-
-```powershell
-mkdir Documents/triageforge-evidence/screenshots
-mkdir Documents/triageforge-evidence/results
-mkdir Documents/triageforge-evidence/failures
-New-Item Documents/triageforge-evidence/project_log.md -ItemType File
-```
-
-| Subfolder | Use it for |
-|---|---|
-| `screenshots` | Numbered images such as `04a_chainsaw_run.png` (stage number, then topic) |
-| `results` | Count tables, CSVs, numbers you generate |
-| `failures` | Wrong or surprising model outputs, with a note on why |
-
-**Screenshots on Windows:** press `Win + Shift + S`, drag a region, paste into Paint or Photos, save with a numbered name.
-
-### Project log template (paste into `project_log.md`)
-
-```markdown
-# Project log
-
-## Setup
-- Date started:
-- Machine (CPU / RAM / OS):
-- Versions: Python __, Git __, Chainsaw __, Sigma commit __, ATT&CK version __, models __
-
-## Credits and data sources (name, URL, license, download date)
--
-
-## Daily entries
-### YYYY-MM-DD
-- What I did:
-- What broke and how I fixed it:
-- Decision made and why:
-- Numbers I noticed:
-- Screenshot files saved:
-
-## Interview stories (one per problem solved)
-- Situation / what I tried / what worked / what I learned
-```
-
-**The habit:** at the end of every session write 3 to 5 lines. Record *why* you chose something and anything that failed. Failures are your best interview stories.
-
-Each stage ends with a **📝 Document** block listing the screenshot to take, the numbers to record, and the decision to write down. Follow them and you finish with everything needed for the README, a case study and interview answers.
-
----
-
-## Stage 1: Check your machine and set safety rules
-
-### What is happening
-You confirm your PC can run the project and agree to some safety habits before installing anything.
-
-### Requirements
-
-| Item | Minimum | Better |
-|---|---|---|
-| RAM | 8 GB | 16 GB |
-| Free disk | 60 GB | 100 GB |
-| Virtualization | Enabled in BIOS (needed for the lab VM in Stage 8) | |
-| LLM | Free local model (Ollama) | Plus an API key (a few dollars) |
-| Time | 4 to 6 weeks part-time | |
-
-To check virtualization: Task Manager, Performance, CPU, look for **Virtualization: Enabled**. If it says Disabled, enable Intel VT-x or AMD-V (SVM) in your BIOS.
-
-### Safety rules
-- Never commit API keys, personal data or real company logs.
-- Run attack simulations only inside a VM with a snapshot.
-- Set a spending limit on any API account.
-- Use public datasets and respect their licenses.
-
-### ✅ Check it worked
-You know your RAM and free disk, and virtualization shows Enabled.
-
-### 📝 Document
-- Screenshot `01a_virtualization.png`: Task Manager showing virtualization enabled.
-- Log (Setup): CPU, RAM, free disk, Windows version. You will quote these in the cost and latency comparison.
-
----
-
 ## Stage 2: Install your tools
 
-### What is happening
-You install the programs the project needs, in this order. Each has a check.
+*Runs on: 🖥️ **HOST***
 
-### Why it matters
-Python runs your code, Git tracks it, Chainsaw turns Sigma rules into alerts, Ollama gives you a free LLM. Recording versions now is what makes your results reproducible later.
 
-### Steps
+### Tools to Download
+Python
 
-**2.1 Python (3.11 or newer).** Download from python.org. On the first installer screen tick **Add python.exe to PATH**, then Install. In a *new* PowerShell window run `python --version`.
+Git
 
-**2.2 Git.** Download from git-scm.com, accept the defaults, then:
+VS Code
 
-```powershell
-git --version
-git config --global user.name 'Your Name'
-git config --global user.email 'you@example.com'
-git config --global core.longpaths true
-```
+Chainsaw
 
-The last line prevents "path too long" errors with the sample datasets.
-
-**2.3 VS Code.** Download from code.visualstudio.com. Install the *Python* and *Markdown Preview Enhanced* extensions.
-
-**2.4 GitHub account and repository.** Sign up at github.com. Create a **public** repository named `triageforge` with a README, a Python `.gitignore` and an MIT license. Clone it:
-
-```powershell
-cd ~/Documents
-git clone https://github.com/YOUR-USERNAME/triageforge.git
-cd triageforge
-code .
-```
-
-**2.5 Chainsaw.** Chainsaw applies Sigma rules to Windows logs. On GitHub open `WithSecureLabs/chainsaw`, go to Releases and download the Windows zip (the archive that includes mapping files is easiest). Extract to `C:/tools/chainsaw/` (create `C:/tools` first), then:
-
-```powershell
-C:/tools/chainsaw/chainsaw.exe --help
-```
-
-SmartScreen or Defender may warn about security tools. Proceed only if you downloaded from the official GitHub releases page.
-
-**2.6 Sigma rules and sample attack logs.**
+**Sigma rules and sample attack logs.**
 
 ```powershell
 cd C:/tools
@@ -130,9 +22,10 @@ cd C:/tools/sigma
 git rev-parse HEAD
 ```
 
-The last command prints the exact rule version (a long hash). **Write it down.** Rules change often, so this hash is how you prove which ones you used.
+RUle version: f083329893e4f44869bf7d283c7aa001ad86a0cd
 
-**2.7 Ollama (free local LLM).** Download from ollama.com/download, install, then:
+
+**Ollama (free local LLM).** Download from ollama.com/download, install, then:
 
 ```powershell
 ollama pull llama3.1:8b
@@ -141,28 +34,11 @@ ollama run llama3.1:8b 'Say hello in five words'
 
 Type `/bye` to exit. On a low-RAM machine use `llama3.2:3b` instead.
 
-**2.8 API key (optional, recommended).** Create an account with Anthropic (console.anthropic.com) or OpenAI, add a few dollars of credit, **set a monthly spending limit**, and create a key. Store it safely; it goes into a `.env` file in Stage 3.
-
-**Install later (not yet):** VirtualBox (Stage 8) and Docker Desktop (Stage 13). Optional: `winget search <name>` can install many tools, but the manual route above is the most reliable for beginners.
-
-### ✅ Check it worked
-`python --version`, `git --version` and `chainsaw.exe --help` all print output, and `ollama run` answers you.
-
-### 📝 Document
-- Screenshot `02_environment.png`: the three version commands and the Chainsaw help together.
-- Record: versions of every tool, the **Sigma commit hash**, the download date of each dataset.
-- **Credits list** in `project_log.md`: name, URL, license and download date of every tool and dataset (it goes into the README).
-- Decision: why Chainsaw (applies Sigma directly to EVTX files); why a local model plus an API model.
-
 ---
 
 ## Stage 3: Create the project skeleton
 
-### What is happening
-You create the folders, an isolated Python environment and a safe place for secrets, then make your first commit.
-
-### Why it matters
-A clean structure signals professionalism. A virtual environment keeps this project's libraries separate from the rest of your PC. Ignoring `.env` is a security decision you will mention in interviews.
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### Steps
 
@@ -305,6 +181,8 @@ On GitHub the folders are there and **`.env` is not visible**. The Actions tab s
 ---
 
 ## Stage 4: Detection (your first alerts)
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 Chainsaw reads Windows logs (`.evtx`) and checks every event against the Sigma rules. Each match is an alert. You convert Chainsaw's raw output into your own tidy `Alert` format.
@@ -456,6 +334,8 @@ It prints `Loaded N alerts` with N above zero, and the first three show a rule t
 
 ## Stage 5: ATT&CK enrichment
 
+*Runs on: 🖥️ **HOST** (your physical PC).*
+
 ### What is happening
 A raw alert is only a rule name. You add the ATT&CK technique name and tactic, how important the host is, and how often this rule has fired on this host.
 
@@ -545,6 +425,8 @@ In a Python session, call `build_frequency(alerts)` and then `enrich(alerts[0], 
 ---
 
 ## Stage 6: LLM triage
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 The LLM reads one enriched alert and returns a structured verdict. It acts as **decision support, not a decision-maker**.
@@ -696,6 +578,8 @@ All three commands run. The mock prints five verdicts instantly; the real models
 ---
 
 ## Stage 7: The safety layer
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 Log data can be written by an attacker, so it is **untrusted input** to the LLM, and an LLM can invent facts. This stage adds three defenses (clean the input, validate the output, apply a policy that makes the final decision) and then attacks your own system to see whether it holds.
@@ -921,8 +805,20 @@ With the gullible model, `model_fooled` is True for every test, yet every test o
 
 ## Stage 8: Build your lab and your data
 
+*Runs on: **both machines**. Every step is tagged 🖥️ **HOST** or 🧪 **VM**.*
+
 ### What is happening
 To measure false positives you need Windows logs from ordinary, sometimes scary-looking, activity where you *know* nothing malicious happened. You also want attack logs made on the **same machine**. A virtual machine (VM) gives you both, safely. Rough time: 3 to 5 hours of setup, plus a few hours or days of activity.
+
+### Which steps run where
+
+| Steps | Runs on |
+|---|---|
+| 8.1 to 8.3: install VMware, download files, create the VM | 🖥️ HOST |
+| 8.4 to 8.9: baseline settings, Sysmon, benign activity, export | 🧪 VM (snapshots are taken from the VMware window on the host) |
+| 8.10: Chainsaw on the benign logs | 🖥️ HOST |
+| 8.11, 8.11b: Atomic Red Team and evasion variants | 🧪 VM |
+| 8.12, 8.13: custom rule, lab diagram | 🖥️ HOST |
 
 ### Why it matters
 
@@ -937,31 +833,32 @@ To measure false positives you need Windows logs from ordinary, sometimes scary-
 
 ### Steps
 
-**8.1 Install VirtualBox.** Confirm virtualization is enabled (Stage 1). Install the latest VirtualBox 7.x from virtualbox.org. You do not need the Extension Pack. With 8 GB of RAM, close browsers while the VM runs. Hyper-V, WSL2 or Memory Integrity may slow the VM but are fine unless it refuses to start.
+**8.1 🖥️ HOST: Install VMware Workstation Pro.** Confirm virtualization is enabled (Stage 1). Download VMware Workstation Pro from Broadcom's support portal (it needs a free Broadcom account; Broadcom has made Workstation Pro free for personal use, but licensing terms change, so read the current terms before installing) and install with the defaults. With 8 GB of RAM, close browsers while the VM runs. If Hyper-V, WSL2 or Memory Integrity are enabled, Workstation can usually run alongside them but may be slower; disable them only if the VM refuses to start or is unusably slow.
 
-**8.2 Download while you have internet:**
-- A **Windows Enterprise Evaluation ISO** from the Microsoft Evaluation Center (free, about 90 days). Windows 10 is simpler if still offered; Windows 11 needs TPM and Secure Boot (VirtualBox can provide them). Record which you used.
-- **Sysmon** from Microsoft Sysinternals.
+**8.2 🖥️ HOST: Download while you have internet:**
+- A **Windows Enterprise Evaluation ISO** from the Microsoft Evaluation Center (free, about 90 days). Windows 10 is simpler if still offered; Windows 11 needs a TPM and Secure Boot (Workstation Pro can provide a virtual TPM, see 8.3). Record which you used.
+- **Sysmon** from Microsoft Sysinternals (you will copy it into the VM in 8.6).
 - A **Sysmon config**: `sysmonconfig-export.xml` from SwiftOnSecurity/sysmon-config (filters noise, so a few Sigma rules may never fire), or Olaf Hartong's sysmon-modular (logs more, mapped to ATT&CK). Neither is wrong; write down which you used and why.
 
 ```powershell
 Get-FileHash ./sysmonconfig-export.xml     # record the SHA-256
 ```
 
-**8.3 Create the VM:**
+**8.3 🖥️ HOST: Create the VM** (in VMware: File, New Virtual Machine):
 
 | Setting | Value |
 |---|---|
-| Name | `triageforge-win` |
+| VM name | `triageforge-win` (the Windows computer name is set later, in 8.4) |
+| Guest OS | Windows 10 x64 or Windows 11 x64, to match your ISO |
 | RAM | 4096 MB (3 GB is possible on an 8 GB host) |
-| CPUs | 2 |
-| Disk | 50 GB, dynamically allocated |
+| Processors | 2 |
+| Disk | 50 GB, **not** pre-allocated (do not tick "Allocate all disk space now") |
 | Network | NAT |
-| Windows 11 only | Settings, System: enable EFI, TPM 2.0, Secure Boot |
+| Windows 11 only | The wizard can add a virtual TPM, which requires encrypting the VM: set a password and **write it down**. Then check VM, Settings, Options, Advanced: firmware type **UEFI** with **Secure Boot** enabled. Check Broadcom's current instructions if the options differ in your version. |
 
-Install Windows with a plain local account named `labuser` to keep personal information out of your logs (VirtualBox's unattended install creates `vboxuser`; note that). Then install **Guest Additions** (Devices menu) for copy and paste.
+**🧪 VM:** Install Windows from the ISO with a plain **local** account named `labuser` (no Microsoft account) to keep personal information out of your logs. If VMware's Easy Install asks for a product key, leave it blank for the evaluation ISO. Then install **VMware Tools** (VM menu, Install VMware Tools, then run the setup inside the VM) for screen resizing, copy and paste, and drag and drop between host and VM.
 
-**8.4 Baseline settings.** In *Administrator* PowerShell inside the VM. Save these as `scripts/lab_baseline.ps1`; scripting the setup is a reproducibility win.
+**8.4 🧪 VM: Baseline settings.** Write these commands into `scripts/lab_baseline.ps1` in your repo **on the host** (scripting the setup is a reproducibility win), copy the file into the VM with drag and drop, and run it in *Administrator* PowerShell inside the VM. Run it in two parts, because the rename needs a reboot (or just type the commands and still save the file). To run a saved script in the VM: `powershell -ExecutionPolicy Bypass -File ./lab_baseline.ps1`.
 
 ```powershell
 # 1. Name must match data/assets.yaml so enrichment works
@@ -1000,9 +897,9 @@ wevtutil sl 'Microsoft-Windows-PowerShell/Operational' /ms:268435456
 
 Leave Windows Defender **on** for the benign baseline; a real endpoint has it. If an audit subcategory name errors on a non-English Windows, run `auditpol /list /subcategory:*` and use the exact name.
 
-**8.5 Snapshot `clean-install`** (Machine, Take Snapshot; description: "baseline audit settings, no Sysmon").
+**8.5 🖥️ HOST (VMware window): Snapshot `clean-install`.** In Workstation: VM, Snapshot, Take Snapshot, description "baseline audit settings, no Sysmon". Snapshot Manager (VM, Snapshot, Snapshot Manager, or `Ctrl+M`) lists snapshots and lets you go back to one.
 
-**8.6 Install Sysmon.** Copy Sysmon and the config into the VM. In Administrator PowerShell:
+**8.6 🧪 VM: Install Sysmon.** Copy the Sysmon zip and the config into the VM (drag and drop from the host). In Administrator PowerShell inside the VM:
 
 ```powershell
 cd C:/Sysmon
@@ -1013,7 +910,7 @@ Get-Service Sysmon64
 
 Verify in Event Viewer, Applications and Services Logs, Microsoft, Windows, Sysmon, Operational: Event ID 1 (process creation) should appear. Run `whoami` and confirm Security event **4688** shows a command line; run any PowerShell command and look for **4104** in the PowerShell Operational log.
 
-**8.7 Clear the logs and snapshot `sysmon-ready`.** This makes the benign export contain only your activity, not install noise:
+**8.7 🧪 VM, then 🖥️ HOST: Clear the logs and snapshot `sysmon-ready`.** Clear the logs inside the VM, then take the snapshot from the VMware menu. This makes the benign export contain only your activity, not install noise:
 
 ```powershell
 wevtutil cl Security
@@ -1023,11 +920,11 @@ wevtutil cl 'Microsoft-Windows-PowerShell/Operational'
 
 > **Critical rule:** the benign export is only "all benign" if nothing malicious ever runs before you export it. **Never run attack tests before the benign export.** Note the exact UTC time benign activity starts.
 
-**8.8 Generate normal-but-scary-looking activity.** Variety and realism matter more than volume. Spread it over several sessions and reboot sometimes (startup activity is normal too).
+**8.8 🧪 VM: Generate normal-but-scary-looking activity.** Variety and realism matter more than volume. Spread it over several sessions and reboot sometimes (startup activity is normal too).
 
 *By hand:* install 7-Zip and VS Code, try `winget install` for something, run Windows Update, browse normal sites, edit documents, open Task Manager, Services, Registry Editor and Event Viewer, try Remote Desktop to localhost or open a local share.
 
-*By script.* Save as `scripts/generate_benign.ps1` (safe to run repeatedly):
+*By script.* Write it as `scripts/generate_benign.ps1` in your repo on the host, copy it into the VM, and run it there (safe to run repeatedly):
 
 ```powershell
 $cmds = @(
@@ -1053,7 +950,7 @@ Compress-Archive -Path (Join-Path $env:USERPROFILE 'Documents') -DestinationPath
 
 **Avoid** random downloads, cracked software, and any attack tool. This VM must stay clean until the benign logs are exported.
 
-**8.9 Export the logs.** In Administrator PowerShell inside the VM:
+**8.9 🧪 VM, then 🖥️ HOST: Export the logs.** In Administrator PowerShell inside the VM:
 
 ```powershell
 mkdir C:/export
@@ -1066,9 +963,9 @@ Get-ChildItem C:/export/*.evtx | ForEach-Object { '{0}: {1} events' -f $_.Name, 
 Get-FileHash C:/export/*.evtx
 ```
 
-Move the files to your host (drag and drop, or a temporary shared folder you **remove afterwards**; shared folders are fine for benign data but a bad habit for malware testing) into `data/raw/benign/`. They are git-ignored. Take a snapshot `benign-exported`.
+**On the host:** move the files into `data/raw/benign/`. The easiest way, with VMware Tools installed, is to drag and drop (or copy and paste) the `.evtx` files from the VM window into that host folder, or use a temporary shared folder (VM, Settings, Options, Shared Folders) that you **disable again afterwards**. These are fine for benign data but a bad habit for malware testing (see 8.11). The files are git-ignored. Then take a snapshot `benign-exported` from the VMware menu.
 
-**8.10 Run Chainsaw on the benign logs** (on your host):
+**8.10 🖥️ HOST: Run Chainsaw on the benign logs** (in a PowerShell window on your physical PC, from the repo folder):
 
 ```powershell
 C:/tools/chainsaw/chainsaw.exe hunt data/raw/benign -s C:/tools/sigma/rules/windows --mapping C:/tools/chainsaw/mappings/sigma-event-logs-all.yml --skip-errors --json -o data/alerts/benign_alerts.json
@@ -1085,11 +982,11 @@ for rule, n in collections.Counter(d['name'] for d in data).most_common(15):
 
 Zero alerts is not a failure: check mapping and paths, and confirm the Sysmon and PowerShell logs actually contain events. If a few rules dominate (encoded PowerShell, `net user`, scheduled tasks), save that table; these are your best "benign but scary" examples.
 
-**8.11 Generate attack logs in the same VM with Atomic Red Team.** Order matters:
+**8.11 🧪 VM: Generate attack logs in the same VM with Atomic Red Team.** Order matters:
 
-1. Revert to **`sysmon-ready`** (not the benign snapshot), so benign and attack logs stay separate.
+1. Revert to **`sysmon-ready`** (not the benign snapshot), so benign and attack logs stay separate. In VMware: Snapshot Manager, select the snapshot, Go To.
 2. Install Atomic Red Team following its **official instructions** (the installer downloads from GitHub, so keep the network on for the install only).
-3. **Disconnect the VM's network adapter** (Devices, Network, uncheck Connect Network Adapter) before running any test.
+3. **Isolate the VM** before running any test: disconnect the network (VM, Removable Devices, Network Adapter, Disconnect, or untick *Connected* in VM, Settings, Network Adapter), and turn off clipboard sharing and drag and drop (VM, Settings, Options, Guest Isolation: untick both). Remove any shared folders.
 4. Add a Defender exclusion for the Atomic folder only: `Add-MpPreference -ExclusionPath 'C:\AtomicRedTeam'`.
 5. Run **one test at a time**, noting UTC start and end, then run its cleanup:
 
@@ -1102,7 +999,7 @@ Invoke-AtomicTest T1059.001 -TestNumbers 1 -Cleanup
 (Get-Date).ToUniversalTime().ToString('o')      # note the cleanup end
 ```
 
-6. Export the logs right after each test (same `wevtutil epl` commands, names like `sysmon_T1059.001_t1.evtx`), then revert the snapshot or clear the logs before the next test.
+6. Export the logs right after each test and its cleanup (same `wevtutil epl` commands, names like `sysmon_T1059.001_t1.evtx`). To get the `.evtx` files out, briefly re-enable drag and drop (or add a shared folder), copy only those log files to the host, and switch it off again before the next test. Never copy anything executable in either direction. Then revert the snapshot or clear the logs before the next test. On the host, put the files in `data/raw/atomic/`.
 
 Start with **10 to 15 simple techniques** that also appear in your sample set (for example T1059.001, T1053.005, T1547). Credential-access tests may be blocked by Defender; skip those rather than weakening protection further. Record every run in `atomic_runs.csv`:
 
@@ -1110,9 +1007,9 @@ Start with **10 to 15 simple techniques** that also appear in your sample set (f
 date,technique_id,test_number,start_utc,end_utc,cleanup_start_utc,cleanup_end_utc,sysmon_file,security_file,notes
 ```
 
-**8.11b (Optional, recommended) Add evasion variants.** Prompt injection attacks the *model*; real attackers also attack the *detection* by obfuscating commands. Showing both is rare and credible. While the VM and Atomic tooling are already set up, run a few **harmless** commands written the way attackers disguise them: `Get-Date` encoded with unusual flag spellings (`-EnCoDeDcOmMaNd`, `-e`, `-ec`), commands split with string concatenation, or `cmd.exe` with inserted carets. Use only harmless payloads and the same rules as any Atomic test: network disconnected, one at a time, note start and end times (and the cleanup times), export, revert. Record each run in the **same** `atomic_runs.csv` with `test_number` set to `E1`, `E2` and so on, the base technique ID (for example `T1059.001`) and `evasion` in `notes`. Because they use the same time-window labeling in Stage 9, they need no extra code, and Stage 11 can score them separately (their group names contain `_tE`).
+**8.11b 🧪 VM (optional, recommended): Add evasion variants.** Prompt injection attacks the *model*; real attackers also attack the *detection* by obfuscating commands. Showing both is rare and credible. While the VM and Atomic tooling are already set up, run a few **harmless** commands written the way attackers disguise them: `Get-Date` encoded with unusual flag spellings (`-EnCoDeDcOmMaNd`, `-e`, `-ec`), commands split with string concatenation, or `cmd.exe` with inserted carets. Use only harmless payloads and the same rules as any Atomic test: network disconnected, one at a time, note start and end times (and the cleanup times), export, revert. Record each run in the **same** `atomic_runs.csv` with `test_number` set to `E1`, `E2` and so on, the base technique ID (for example `T1059.001`) and `evasion` in `notes`. Because they use the same time-window labeling in Stage 9, they need no extra code, and Stage 11 can score them separately (their group names contain `_tE`).
 
-**8.12 (Optional) Write and measure your own Sigma rule (detection engineering).** You have attack and benign logs now, so this is the cheapest moment to do it.
+**8.12 🖥️ HOST (optional): Write and measure your own Sigma rule (detection engineering).** You have attack and benign logs now, so this is the cheapest moment to do it.
 
 **Why it matters.** Using community rules shows you can run tools; writing and tuning one shows you can do detection engineering. It also gives you a clean before/after story, which is exactly what interviewers ask for.
 
@@ -1152,7 +1049,7 @@ tags:
 
 Two cautions. First, if you tune the rule on these logs, state that in `docs/methodology.md` and report the custom rule separately from the headline baseline, because the same logs feed your evaluation. Second, from Stage 9 onward include the rule in every Chainsaw run by repeating `-s` (see 9.1).
 
-**8.13 Draw the lab diagram** in draw.io or Excalidraw: Windows host (Python, Chainsaw, Sigma, Ollama, pipeline) connected to the VM `LAB-WIN10` (Sysmon, audit policy, PowerShell logging, NAT, snapshots `clean-install`, `sysmon-ready`, `benign-exported`), then EVTX export into `data/raw/benign`, `data/raw/atomic` and `data/raw/attack`, then Chainsaw, then alerts. Save as `docs/lab_setup.png`.
+**8.13 🖥️ HOST: Draw the lab diagram** in draw.io or Excalidraw: Windows host (Python, Chainsaw, Sigma, Ollama, pipeline) connected to the VMware Workstation Pro VM `LAB-WIN10` (Sysmon, audit policy, PowerShell logging, NAT, snapshots `clean-install`, `sysmon-ready`, `benign-exported`), then EVTX export into `data/raw/benign`, `data/raw/atomic` and `data/raw/attack`, then Chainsaw, then alerts. Save as `docs/lab_setup.png`.
 
 ### ✅ Check it worked
 The export has events (counts are not zero), Chainsaw ran on the benign folder, and Security event 4688 contains a command line. If 4688 has no command line, redo 8.4.
@@ -1163,7 +1060,7 @@ The export has events (counts are not zero), Chainsaw ran on the benign folder, 
 |---|---|
 | `08a_virtualization_enabled.png`, `08b_vm_settings.png`, `08c_windows_winver.png` | evidence screenshots |
 | `08d_audit_settings.png`: output of `auditpol /get /subcategory:'Process Creation'` | evidence screenshots |
-| `08e_snapshots.png`: all snapshots listed | evidence screenshots |
+| `08e_snapshots.png`: Snapshot Manager listing all snapshots | evidence screenshots |
 | `08f_sysmon_service.png`, `08g_sysmon_eventviewer.png`, `08h_security_4688.png` | evidence screenshots |
 | `08i_activity_in_logs.png`, `08j_export_counts.png`, `08k_chainsaw_benign.png`, `08l_atomic_run.png` (network adapter visibly disconnected) | evidence screenshots |
 | `lab_counts.md` (events per log, date range, hashes), `benign_alert_summary.csv`, `atomic_runs.csv` | evidence results |
@@ -1179,6 +1076,8 @@ In `project_log.md`: ISO name, edition and build; Sysmon version; config source,
 ---
 
 ## Stage 9: Ground-truth labels (the answer key)
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 You build `data/labels.csv`: for every alert, is it truly malicious, which technique, and does it belong to **dev** (for tuning) or **test** (for the final score). Every metric later depends on it.
@@ -1451,6 +1350,8 @@ print(len(picked), 'sample alerts written')
 
 ## Stage 10: Assemble the pipeline
 
+*Runs on: 🖥️ **HOST** (your physical PC).*
+
 ### What is happening
 You combine every piece (load, enrich, scrub, LLM, guard, policy) into one command that reads alerts and writes a results table. Each run also saves a small config file recording exactly how it was run.
 
@@ -1708,6 +1609,8 @@ The mock run finishes and creates `eval/results/runs/<run_id>/results.csv` and `
 ---
 
 ## Stage 11: Evaluation
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 You grade the system against the answer key, compare it to a simple baseline and a naive LLM, and study where it fails. This is the stage that decides whether your project is credible.
@@ -2065,6 +1968,8 @@ Every number in `results.md` traces to a run folder with a `config.json`; `test_
 
 ## Stage 12: ATT&CK Navigator visual
 
+*Runs on: 🖥️ **HOST** (your physical PC).*
+
 ### What is happening
 The ATT&CK Navigator is a web tool that colors the ATT&CK matrix. You write a small script that outputs a layer file coloring each technique in your test data by how often your system escalated it (per-technique recall).
 
@@ -2104,6 +2009,8 @@ The Navigator opens your layer and your techniques are colored.
 ---
 
 ## Stage 13: Quality, tests, CI, demo and Docker
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 You make the project safe to change, automatically checked, and easy for a stranger to run in five minutes.
@@ -2205,6 +2112,8 @@ Build and run: `docker build -t triageforge .` then `docker run triageforge`.
 ---
 
 ## Stage 14: Publish (README, case study, video, resume, interviews)
+
+*Runs on: 🖥️ **HOST** (your physical PC).*
 
 ### What is happening
 You assemble what you already built into the things people will actually see. **Nothing in this stage asks you to go back and build something new**: every document linked below was created at the stage where the work happened.
@@ -2313,7 +2222,8 @@ The README opens with the headline block, every link resolves, the live report l
 | Chainsaw blocked or flagged | Only use the official GitHub release; check Windows Security, Protection history |
 | Chainsaw finds no alerts | Check `-s` and `--mapping` paths; try one file; run `--help` |
 | `from triageforge import ...` fails | Activate the venv and run `pip install -e .` |
-| VirtualBox will not start the VM | Enable virtualization in BIOS; disable Hyper-V conflicts if needed |
+| The VMware VM will not start | Enable virtualization in BIOS; if Workstation reports a Hyper-V, Device Guard or Credential Guard conflict, check Windows Features and Memory Integrity |
+| Cannot copy files between host and VM | Install VMware Tools in the VM; check VM, Settings, Options, Guest Isolation (and remember to switch it off again for attack tests) |
 | No 4688 command lines | Redo the audit settings in 8.4 |
 | LLM returns invalid JSON | Keep temperature at 0, rely on the retry, shorten the alert text |
 | Ollama not responding | Open the Ollama app; check with `ollama list` |

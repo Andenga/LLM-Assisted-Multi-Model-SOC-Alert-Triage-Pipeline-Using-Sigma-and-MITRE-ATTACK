@@ -1,8 +1,0 @@
-# MITRE ATT&CK data (large, re-download using the command in README)
-data/attack/*.json
-# TriageForge
-.env
-data/raw/
-data/attack/
-data/alerts/
-*.evtx
