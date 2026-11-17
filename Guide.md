@@ -141,17 +141,11 @@ repos:
 ```
 
 Run `pre-commit autoupdate` (it replaces the `rev` values with the latest releases), then `pre-commit install`. The first run downloads its tools. If ruff blocks a later commit, run `ruff check . --fix` and fix what remains. To prove the secret scanner works, try committing a throwaway file containing a line like `api_key = 'a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8s9T0'`; detection depends on the hook's current rules, and you should delete the file without committing it either way.
-- **`SECURITY.md`:** how to report a vulnerability, and what the project does and does not protect against (it is a research and learning project, not a production control).
-- **`CITATION.cff`** (GitHub shows a "Cite this repository" button):
 
-
-
-- **`CONTRIBUTING.md`**: five lines on how to run the tests and the demo. Short is fine.
+---
 
 **3.8 Start your decision log.** Create `docs/decisions.md` now. Every time a stage's Document block says "Decision to write down", add a dated entry here as well as in your private log, in this form: *Decision, alternatives considered, why*. By the end you will have five or six entries ready (Chainsaw over a custom Sigma engine; a policy backstop over trusting the model; a group-aware split over a random split; attacks generated in the VM rather than public samples only; a local model option for privacy). Interviewers love these because each one is a ready-made story, and you will drop the file into the README untouched.
 
-### ✅ Check it worked
-On GitHub the folders are there and **`.env` is not visible**. The Actions tab shows a green run, and the pre-commit hook is installed.
 
 ### 📝 Document
 - Screenshot `03_structure.png`: folder tree in VS Code.
