@@ -144,17 +144,7 @@ Run `pre-commit autoupdate` (it replaces the `rev` values with the latest releas
 - **`SECURITY.md`:** how to report a vulnerability, and what the project does and does not protect against (it is a research and learning project, not a production control).
 - **`CITATION.cff`** (GitHub shows a "Cite this repository" button):
 
-```yaml
-cff-version: 1.2.0
-message: If you use this project, please cite it as below.
-title: TriageForge
-authors:
-  - family-names: YourLastName
-    given-names: YourFirstName
-version: 0.1.0
-license: MIT
-repository-code: https://github.com/YOUR-USERNAME/triageforge
-```
+
 
 - **`CONTRIBUTING.md`**: five lines on how to run the tests and the demo. Short is fine.
 
