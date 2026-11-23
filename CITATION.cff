@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: If you use this work, please cite it.
-title: LLM-Assisted Multi Model SOC Alert Triage Pipeline Using Sigma and MITRE ATTACK
-author:
+title: "LLM-Assisted Multi Model SOC Alert Triage Pipeline Using Sigma and MITRE ATTACK"
+authors:
   - family-names: Andenga
     given-names: Lydia
 repository-code: https://github.com/Andenga/LLM-Assisted-Multi-Model-SOC-Alert-Triage-Pipeline-Using-Sigma-and-MITRE-ATTACK.git
