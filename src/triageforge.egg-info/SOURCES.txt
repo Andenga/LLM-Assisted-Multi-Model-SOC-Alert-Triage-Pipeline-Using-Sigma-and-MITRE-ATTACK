@@ -5,3 +5,4 @@ src/triageforge.egg-info/SOURCES.txt
 src/triageforge.egg-info/dependency_links.txt
 src/triageforge.egg-info/top_level.txt
 src/triageforge/providers/__init__.py
+tests/test_smoke.py
