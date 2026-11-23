@@ -1,199 +1,140 @@
-# LLM-Assisted SOC Alert Triage Pipeline (Sigma + MITRE ATT&CK)
+# TriageForge
 
-> A detection-to-triage pipeline that runs public Sigma rules against real attack-simulation log data, maps every match to MITRE ATT&CK, and uses an LLM to produce a structured, confidence-scored triage verdict with human-in-the-loop escalation for anything the model isn't sure about.
+![CI](https://github.com/YOUR-USERNAME/triageforge/actions/workflows/ci.yml/badge.svg)
+![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-· [Evaluation results](docs/EVALUATION.md) · [Design decisions](docs/DESIGN_DECISIONS.md)
+TriageForge triages Windows security alerts with local LLMs (via Ollama) and measures how well they do it. It takes Sigma detections from Chainsaw, adds MITRE ATT&CK context, asks a model for a structured verdict, checks that verdict, and lets a deterministic policy make the final call. It also compares three model families on the same labeled alerts so you can see which one is safe to rely on.
 
+It is a research prototype for decision support. It never closes or deletes an alert.
 
----
-## Data setup
+[Live sample report](https://YOUR-USERNAME.github.io/triageforge/report.html) · [Results](eval/results.md) · [Failure analysis](eval/failure_analysis.md) · [System card](docs/SYSTEM_CARD.md)
 
-The MITRE ATT&CK dataset is not stored in this repo because of its size.
-Download it from the project root
+## What it does
+
+- Turns Chainsaw/Sigma alerts into a clean, scrubbed `Alert` (no file names, hostnames or usernames reach the model).
+- Enriches each alert with ATT&CK technique and tactic, asset criticality, and how often the rule fired on that host.
+- Gets a schema-validated JSON verdict from a local model: verdict, confidence, technique, evidence, reasoning, actions.
+- Rejects invented technique IDs and evidence that does not appear in the alert.
+- Applies a safety policy: a model can lower an alert's priority in one narrow case only. High or critical rules and critical assets always escalate.
+- Benchmarks three models on the same alerts, prompt and settings, and records exactly what ran (model digest, quantization, Ollama version, prompt and schema hashes, inference settings).
+
+## How it works
+
+```
+EVTX logs → Chainsaw + Sigma → Alert → ATT&CK enrichment → scrub
+          → (optional retrieval of reviewed alerts) → local LLM
+          → guard (validate ID + evidence) → policy → report
+```
+
+Labels never enter the pipeline. It receives only alert IDs from the chosen split, and the test split is refused unless you pass `--final`.
+
+## Quickstart
+
+The demo needs no datasets and no Ollama. It runs a mock model through the full guard and policy path on sanitized sample alerts.
+
 ```powershell
-mkdir data\attack
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/mitre-attack/attack-stix-data/master/enterprise-attack/enterprise-attack.json" -OutFile "data\attack\enterprise-attack.json"
-```
-
-- Source: https://github.com/mitre-attack/attack-stix-data
-- ATT&CK version used in this project: **17.1** (replace with yours)
-- Downloaded on: **2026-10-19** (replace with your date)
-
-## Problem statement
-
-SOC analysts triage far more alerts than they can meaningfully review — most SIEM deployments produce a high false-positive rate, and Tier-1 analysts spend the majority of their time on alerts that turn out to be benign. The cost of *missing* a true positive on a critical asset, however, is far higher than the cost of an analyst spending a few extra minutes on a false alarm.
-
-This project builds a pipeline that:
-1. Detects suspicious activity in real attack-simulation logs using **actual, publicly maintained Sigma detection rules** (not hand-labeled ground truth).
-2. Maps every detection to its **MITRE ATT&CK technique**, so an analyst immediately knows *what kind of behavior* triggered it.
-3. Uses an LLM to produce a **structured, explainable triage verdict** (verdict, confidence, reasoning, recommended action) using the same context an analyst would use — asset criticality and recent related activity.
-4. Routes low-confidence or high-stakes verdicts to a **human review queue** rather than ever silently auto-suppressing them — the core design decision of the project.
-5. Is evaluated against a manually labeled test set with **honest metrics**, including false-negative rate specifically on high/critical-severity alerts, not just aggregate accuracy.
-
-The goal isn't "an LLM that auto-closes alerts." It's a triage *assistant* that reduces analyst workload on clearly benign activity while remaining conservative — provably, measurably conservative — about anything ambiguous or high-stakes.
-
----
-
-## Architecture
-
-```mermaid
-flowchart LR
-    A[Raw logs\nEVTX-ATTACK-SAMPLES / Mordor] --> B[Ingest & normalize\nSIEM-like schema]
-    B --> C[Sigma detection engine\npySigma + vendored SigmaHQ rules]
-    C -->|rule match| D[ATT&CK mapping\ntechnique ID + tactic]
-    D --> E[Enrichment\nasset criticality + related alerts]
-    E --> F[LLM triage layer\nstructured JSON verdict]
-    F --> G{Confidence &\nseverity router}
-    G -->|high confidence, benign, non-critical asset| H[Auto-close\n+ audit sample]
-    G -->|high confidence, malicious| I[Auto-escalate\nhigh priority]
-    G -->|low confidence OR critical asset| J[Human review queue]
-    J --> K[Analyst feedback\nlogged for calibration]
-    H --> L[Dashboard / CLI]
-    I --> L
-    J --> L
-```
-
-*(Rendered natively by GitHub. PNG export at `docs/architecture.png` for anywhere Mermaid isn't supported.)*
-
----
-
-## Data sources
-
-| Source | What it provides | Why this instead of Kaggle |
-|---|---|---|
-| [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) | Real Windows EVTX exports from simulated attacks, per-technique | Practitioner-maintained, used in real DFIR training |
-| [OTRF Security-Datasets (Mordor)](https://github.com/OTRF/Security-Datasets) | ATT&CK-tagged attack simulation datasets with metadata | Ground-truth technique labels ship with the data itself |
-| [SigmaHQ/sigma](https://github.com/SigmaHQ/sigma) | The detection rules themselves | The actual open-source ruleset used by real SOCs/SIEMs |
-| [MITRE ATT&CK](https://github.com/mitre-attack/attack-stix-data) | Technique/tactic metadata | Canonical source for technique names and descriptions |
-
-Datasets used in this project: `[list the 5–10 you picked, with ATT&CK tactics covered]`.
-Sigma rule subset: `[N] rules`, vendored at commit `[hash]` from `rules/windows/...`.
-
----
-
-## AI technique used
-
-- **Model**: `[e.g. claude-sonnet-4-6 via the Anthropic Messages API]`
-- **Technique**: prompt-based structured triage with a fixed JSON output schema (tool-based structured output where available), not fine-tuning — each alert is triaged independently with explicit context (alert fields, ATT&CK mapping, asset criticality, related recent activity) rather than relying on the model's parametric knowledge alone.
-- **Guardrails**: alert field values are explicitly framed as untrusted data in the system prompt, and the pipeline is tested against a synthetic prompt-injection payload embedded in a log field (see `tests/test_prompt_injection.py` and `docs/EVALUATION.md#prompt-injection-test`).
-- **Cost/latency**: `[$X total / $Y per alert, Z seconds average]` for `[N]` alerts, benchmarked in `docs/EVALUATION.md`.
-
----
-
-## Sample input → output
-
-**Alert in:**
-```json
-{
-  "rule.name": "Suspicious PowerShell Encoded Command",
-  "rule.id": "...",
-  "severity": "high",
-  "attack": {"technique_id": "T1059.001", "technique_name": "PowerShell", "tactic": "Execution"},
-  "host.name": "WIN-DC01",
-  "host.criticality": "critical",
-  "user.name": "svc_backup",
-  "process.command_line": "powershell -enc SQBFAFgA...",
-  "related_alerts_24h": ["T1003.001 on same host 40 minutes earlier"]
-}
-```
-
-**LLM triage verdict out:**
-```json
-{
-  "verdict": "true_positive",
-  "confidence": 0.91,
-  "reasoning": "Encoded PowerShell execution on a domain controller by a service account, occurring shortly after a credential-access alert on the same host, matches a common post-exploitation pattern rather than routine admin activity.",
-  "recommended_action": "isolate_host",
-  "attack_technique_referenced": "T1059.001"
-}
-```
-
-**Routing decision:** critical asset → routed to human review regardless of confidence, flagged high-priority given the true_positive verdict and correlated prior alert.
-
-More examples (including a false-positive case and the prompt-injection test case) in `data/llm_traces/`.
-
----
-
-## Escalation logic
-
-The single most important design decision in this project: **the LLM can recommend, but it never has unilateral authority to suppress an alert.**
-
-| Confidence | Verdict | Asset criticality | Action |
-|---|---|---|---|
-| ≥ `[0.85]` | false_positive | non-critical | Auto-close (5% randomly re-surfaced for audit) |
-| ≥ `[0.85]` | true_positive | any | Auto-escalate, high priority |
-| any | any | **critical** | Always routed to human review, regardless of confidence |
-| < `[0.85]` | any | any | Routed to human review |
-
-Thresholds are stricter for higher-severity Sigma rules — see `docs/DESIGN_DECISIONS.md` for the exact per-severity threshold table and reasoning.
-
----
-
-## Evaluation results
-
-Full methodology in [`docs/EVALUATION.md`](docs/EVALUATION.md). Headline numbers:
-
-| Metric | Overall | High/Critical severity only |
-|---|---|---|
-| Precision | `[x]` | `[x]` |
-| Recall | `[x]` | `[x]` |
-| **False negative rate** | `[x]` | **`[x]`** |
-| vs. naive baseline (escalate all high/critical, close rest) | `[+/- x pts recall, +/- x pts analyst workload]` | |
-
-**Tradeoff note:** this system is deliberately tuned to optimize recall on high/critical-severity alerts, even at the cost of a higher false-positive (over-escalation) rate, because a missed detection on a critical asset is a categorically more expensive error than an analyst reviewing an extra benign alert. See `docs/EVALUATION.md` for the full calibration analysis and where the LLM layer did/didn't outperform the naive baseline.
-
----
-
-## Dashboard / CLI
-
-`[screenshot of the Streamlit dashboard or CLI table here]`
-
-Run it locally:
-```bash
-streamlit run dashboard/app.py
-```
-
----
-
-## Running the pipeline
-
-```bash
-python -m venv .venv && source .venv/bin/activate
+git clone https://github.com/YOUR-USERNAME/triageforge.git
+cd triageforge
+python -m venv .venv
+./.venv/Scripts/Activate.ps1
 pip install -r requirements.txt
-
-# 1. normalize sample logs
-python src/ingest.py --input data/raw --output data/normalized.jsonl
-
-# 2. run Sigma detection
-python src/detect.py --logs data/normalized.jsonl --rules data/sigma_rules --output data/alerts.jsonl
-
-# 3. run full triage pipeline (ATT&CK mapping + enrichment + LLM + escalation)
-python src/pipeline.py --alerts data/alerts.jsonl --output data/triaged.jsonl
-
-# 4. view results
-streamlit run dashboard/app.py
+pip install -e .
+python scripts/demo.py
 ```
 
-Or with Docker:
-```bash
-docker build -t soc-llm-triage .
-docker run -p 8501:8501 soc-llm-triage
+With Docker (runs the mock demo only):
+
+```powershell
+docker build -t triageforge .
+docker run triageforge
 ```
 
----
+## Using real models
 
-## Limitations & what I'd do differently at scale
+Install [Ollama](https://ollama.com/download), keep it on `127.0.0.1` (the default), and pull a model using the exact tag from the Ollama library:
 
-- Evaluation set is manually labeled and relatively small (`[N]` alerts) — precision/recall estimates have wide confidence intervals; would want a larger, ideally multi-annotator labeled set for production-grade numbers.
-- Related-alert correlation is a simple time-windowed lookback; at scale this would be a vector-similarity or graph-based correlation over a proper alert store rather than an in-memory groupby.
-- Batch, not streaming — a production version would ingest from a real SIEM/EDR stream rather than static log files.
-- Single-model evaluation by default; `[if you did the model comparison]` a second model was compared on a subset — see `docs/EVALUATION.md`.
-- Asset criticality is a small simulated inventory, not a real CMDB integration.
+```powershell
+ollama pull qwen3.5:9b
+python scripts/try_five.py local qwen3.5:9b
+```
 
+Run the pipeline on the development split:
 
+```powershell
+python -m triageforge run --provider local --model qwen3.5:9b --split dev --no-cache
+```
 
----
+Each run writes `results.csv` and a `config.json` manifest to `eval/results/runs/<run_id>/`.
 
-## Author's note
+## Models compared
 
-Written up in more detail here: `[link to your retrospective blog post / LinkedIn post]`. Happy to walk through the prompt design, the escalation logic, or the prompt-injection test live — that's the fastest way to see it's real.
+| Model | Developer | Notes |
+|---|---|---|
+| Foundation-Sec-8B-Instruct | Cisco Foundation AI | Open-weight model built for cybersecurity (Llama 3.1 8B base) |
+| qwen3.5:9b | Alibaba | General-purpose, good structured output |
+| gpt-oss:20b | OpenAI | Reasoning-oriented mixture-of-experts (use `gemma4:e4b` below 16 GB RAM) |
+
+Only one of the three was trained specifically for security. Licenses differ, so read [`docs/model_selection.md`](docs/model_selection.md) before redistributing anything.
+
+## Results
+
+Numbers come from `eval/results.md` only, and every figure traces to a run folder. Fill this in after your final test run:
+
+| Test alerts | Baseline recall | Best model recall (95% CI) | Missed attacks | Queue reduction | Median s/alert |
+|---|---|---|---|---|---|
+| N | X% | Y% (a to b) | M | Z% | S |
+
+These are results on a small lab dataset and one hardware setup, not a general ranking of models. If no model beats the Sigma-level baseline, that is reported as the finding.
+
+## Security
+
+Log text is attacker-controlled, so it is treated as untrusted input.
+
+- The prompt wraps alerts in `<alert_data>` and tells the model never to follow instructions inside it.
+- Fields are allowlisted, length-capped and stripped of invisible characters.
+- 12 prompt-injection cases run per model, including a "gullible" mock model that obeys every injection. High-risk alerts still reach a human.
+- A retrieval-poisoning test checks that a poisoned reference cannot suppress a high-risk alert.
+- Controls are mapped to the OWASP Top 10 for LLM Applications in [`docs/threat_model.md`](docs/threat_model.md).
+
+## Reproducibility
+
+A lock file pins each model by digest, and `python scripts/drift_check.py` stops you from mixing results from two builds of the same tag. Run it at the start of every session. See [`docs/hardware.md`](docs/hardware.md) for the machine the timings came from.
+
+## Project layout
+
+```
+src/triageforge/   pipeline, providers, guard, policy, retrieval, manifests
+scripts/           demo, benchmarks, labeling, reports, drift check
+eval/              scoring, plans, run manifests, results
+prompts/           versioned system prompts (never edited after use)
+config/            inference settings, model registry, JSON schema
+docs/              threat model, dataset and system cards, methodology
+tests/             unit and safety tests (none call a real model)
+data/samples/      sanitized sample alerts for the demo
+```
+
+Raw logs, alerts and embeddings are git-ignored. Only IDs, labels and sanitized samples are committed.
+
+## Limitations
+
+- Lab data is cleaner than production, and sample sizes are small.
+- Attack prevalence in the dataset is far higher than in a real SOC queue, so precision is also reported at 1% prevalence.
+- Labels come mostly from provenance plus a reviewed sample and a second-reviewer check, not a full audit.
+- Local inference is not free: electricity and hardware wear are not charged.
+
+## Documentation
+
+[Methodology](docs/methodology.md) · [Dataset card](docs/DATASET_CARD.md) · [Model selection](docs/model_selection.md) · [Embedding retrieval](docs/embedding_retrieval.md) · [Multi-model](docs/multi_model.md) · [Decisions](docs/decisions.md)
+
+## Credits
+
+[Sigma](https://github.com/SigmaHQ/sigma), [Chainsaw](https://github.com/WithSecureLabs/chainsaw), [MITRE ATT&CK](https://attack.mitre.org/), [Atomic Red Team](https://github.com/redcanaryco/atomic-red-team), [EVTX-ATTACK-SAMPLES](https://github.com/sbousseaden/EVTX-ATTACK-SAMPLES) and [Ollama](https://ollama.com/). Each dataset and model keeps its own license.
+
+## Security policy and citation
+
+Report vulnerabilities as described in [SECURITY.md](SECURITY.md). To cite this work, see [CITATION.cff](CITATION.cff).
+
+## License
+
+Code is MIT licensed. See [LICENSE](LICENSE).
