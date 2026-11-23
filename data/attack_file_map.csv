@@ -1,0 +1,2 @@
+filename,tactic,technique_id,technique_name
+exec_sysmon_1_11_lolbin_rundll32_openurl_FileProtocolHandler.evtx,Execution,T1218.011,System Binary Proxy Execution: Rundll32
