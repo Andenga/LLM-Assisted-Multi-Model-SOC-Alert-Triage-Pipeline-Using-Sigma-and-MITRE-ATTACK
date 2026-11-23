@@ -321,38 +321,69 @@ Why Pydantic: it forces data into a strict shape and raises an error when it doe
 
 **4.5 Write the loader.** Create `src/triageforge/detect.py`. The key names are a starting guess: first print one raw record (`print(json.dumps(data[0], indent=2))`) and change the keys to match what you see.
 
+Use this code to test one
+
 ```python
 import json
+from pathlib import Path
+
+alerts_path = Path("data/alerts/attack_alerts.json")
+data = json.loads(alerts_path.read_text(encoding="utf-8"))
+
+print(f"Total alerts found: {len(data)}")
+print(json.dumps(data[0], indent=2))
+
+```
+
+Continue :
+
+```python
+import json
+from pathlib import Path
+
 from .models import Alert
 
-def load_alerts(path, origin=''):
-    data = json.load(open(path, encoding='utf-8'))
-    alerts, seen = [], set()
+
+def load_alerts(path: str | Path, origin: str = "") -> list[Alert]:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    alerts: list[Alert] = []
+    seen: set[tuple[str, str, str]] = set()
+
     for rec in data:
-        doc = rec.get('document', {})
-        event = doc.get('data', {}).get('Event', {})
-        system = event.get('System', {})
-        fields = event.get('EventData', {}) or {}        # ADJUST to your version
+        doc = rec.get("document", {})
+        event = doc.get("data", {}).get("Event", {})
+        system = event.get("System", {})
+
+        raw_fields = event.get("EventData") or event.get("UserData") or {}
+        fields = raw_fields if isinstance(raw_fields, dict) else {"raw": str(raw_fields)}
+
         a = Alert(
-            alert_id='',
-            timestamp=str(rec.get('timestamp', '')),
-            host=str(system.get('Computer', '')),
-            rule_id=str(rec.get('id', '')),
-            rule_title=str(rec.get('name', '')),
-            rule_level=str(rec.get('level', 'medium')),
-            rule_tags=list(rec.get('tags', [])),
+            alert_id="",
+            timestamp=str(rec.get("timestamp", "")),
+            host=str(system.get("Computer", "")),
+            rule_id=str(rec.get("id", "")),
+            rule_title=str(rec.get("name", "")),
+            rule_level=str(rec.get("level", "medium")),
+            rule_tags=list(rec.get("tags") or []),
             fields=fields,
-            source_file=str(doc.get('path', '')),
+            source_file=Path(str(doc.get("path", ""))).name,
             origin=origin,
         )
-        key = (a.rule_title, a.host, a.timestamp[:16])   # same rule + host + minute = duplicate
+
+        # Deduplicate: same rule + host + minute
+        key = (a.rule_title, a.host, a.timestamp[:16])
         if key in seen:
             continue
         seen.add(key)
         alerts.append(a)
+
     for i, a in enumerate(alerts, 1):
-        a.alert_id = f'A{i:04d}'
+        a.alert_id = f"A{i:04d}"
+
     return alerts
+
 ```
 
 Duplicate grouping stops you triaging 500 copies of one event. Test it with `scripts/show_alerts.py`:
