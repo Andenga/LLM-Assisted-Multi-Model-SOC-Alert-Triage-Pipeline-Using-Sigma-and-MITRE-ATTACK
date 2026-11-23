@@ -3,7 +3,11 @@
 data/raw/
 data/attack/
 data/alerts/
+data/embeddings/
+evidence/
 .cache/
 *.evtx
 __pycache__/
 .pytest_cache/
+eval/results/runs/*/raw_responses.jsonl
+eval/model_bench/raw_responses/
