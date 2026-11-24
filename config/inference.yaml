@@ -1,0 +1,10 @@
+temperature: 0
+seed: 42
+stream: false
+format: json
+num_ctx: 8192
+num_predict: 1500
+top_p: 1.0
+top_k: 40
+repeat_penalty: 1.0
+keep_alive: 5m

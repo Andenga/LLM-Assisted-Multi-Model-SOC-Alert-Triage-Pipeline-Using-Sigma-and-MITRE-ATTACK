@@ -1,0 +1,21 @@
+models:
+  - id: foundation-sec
+    name: foundation-sec:8b-instruct
+    vendor: Cisco Foundation AI
+    role: security_specialist
+    enabled: true
+    overrides: {}
+  - id: qwen3.5-9b
+    name: qwen3.5:9b
+    vendor: Alibaba
+    role: general_primary
+    enabled: true
+    overrides:
+      think: false
+  - id: gpt-oss-20b
+    name: gpt-oss:20b
+    vendor: OpenAI
+    role: reasoning_comparator
+    enabled: true
+    overrides:
+      think: low

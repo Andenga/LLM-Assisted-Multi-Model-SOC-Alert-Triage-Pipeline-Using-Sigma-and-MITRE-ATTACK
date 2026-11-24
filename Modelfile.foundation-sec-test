@@ -1,0 +1,9 @@
+
+FROM foundation-sec:8b-instruct
+
+TEMPLATE """{{- if .System }}<|system|>
+{{ .System }}
+{{ end }}{{- if .Prompt }}<|user|>
+{{ .Prompt }}
+{{ end }}<|assistant|>
+"""

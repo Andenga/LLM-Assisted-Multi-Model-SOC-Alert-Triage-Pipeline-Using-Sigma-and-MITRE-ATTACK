@@ -507,6 +507,11 @@ print([o.get('x_mitre_version') for o in d['objects'] if o.get('type') == 'x-mit
 
 In a Python session call `build_frequency(alerts)` then `enrich(alerts[0], load_attack())`. You should see something like `T1059.001 Command and Scripting Interpreter: PowerShell (tactic: execution)`, an asset level and a frequency count.
 
+```python
+python -c "import json; from triageforge.detect import load_alerts; from triageforge.enrich import load_attack, build_frequency, enrich; alerts = load_alerts('data/alerts/attack_alerts.json', origin='attack'); freq = build_frequency(alerts); enriched = enrich(alerts[0], load_attack(), freq); print(json.dumps(enriched, indent=2, default=str))"
+
+```
+
 ### Document
 
 Screenshot `05_enriched_alert.png`. Numbers: ATT&CK version, total valid technique IDs, how many alert tags mapped versus failed. Decision: why validate technique IDs (the model cannot invent them unnoticed) and why asset criticality and frequency are included.
@@ -551,6 +556,10 @@ Whichever route you use, give it a short permanent local name (also your freeze 
 
 ```powershell
 ollama cp <exact-tag-from-ollama-list> foundation-sec:8b-instruct
+
+# Use this instead because this other one has a missing chat template that makes it answer questions incorrectly.
+
+ollama cp foundation-sec:1.1-chat-template-test foundation-sec:8b-instruct
 ollama show foundation-sec:8b-instruct
 ```
 
